@@ -1,65 +1,55 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
+import React, {useRef} from 'react';
+import {SafeAreaView, StatusBar, useColorScheme, View} from 'react-native';
+import WebView from 'react-native-webview';
 
-import React from 'react';
-import type {PropsWithChildren} from 'react';
-import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View,
-} from 'react-native';
+import {Colors} from 'react-native/Libraries/NewAppScreen';
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
-
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
-
-function Section({children, title}: SectionProps): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-}
+export type NavigationState = {
+  url?: string;
+  title?: string;
+  loading?: boolean;
+  canGoBack?: boolean;
+  canGoForward?: boolean;
+};
 
 function App(): React.JSX.Element {
   const isDarkMode = useColorScheme() === 'dark';
+  const webviewRef: any = useRef(null);
 
-  const backgroundStyle = {
+  const backgroundStyle: any = {
     backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
+    height: '100%',
+  };
+
+  const handleWebViewNavigationStateChange = (newNavState: NavigationState) => {
+    const {url} = newNavState;
+    console.log(newNavState);
+
+    if (!url) {
+      return;
+    }
+
+    // lidar com doctypes
+    if (url.includes('.pdf')) {
+      webviewRef.stopLoading();
+    }
+
+    // uma maneira de lidar com um envio de formulário bem-sucedido é por meio de strings de consulta
+    if (url.includes('?message=success')) {
+      webviewRef.stopLoading();
+    }
+
+    // uma maneira de lidar com erros é via string de consulta
+    if (url.includes('?errors=true')) {
+      webviewRef.stopLoading();
+    }
+
+    // redirecionar para outro lugar
+    if (url.includes('google.com')) {
+      const newURL = 'https://reactnative.dev/';
+      const redirectTo = 'window.location = "' + newURL + '"';
+      webviewRef.injectJavaScript(redirectTo);
+    }
   };
 
   return (
@@ -68,51 +58,35 @@ function App(): React.JSX.Element {
         barStyle={isDarkMode ? 'light-content' : 'dark-content'}
         backgroundColor={backgroundStyle.backgroundColor}
       />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
-      </ScrollView>
+      <View
+        style={{
+          backgroundColor: 'red',
+          height: '100%',
+        }}>
+        <WebView
+          onOpenWindow={syntheticEvent => {
+            const {nativeEvent} = syntheticEvent;
+            const {targetUrl} = nativeEvent;
+            console.log('Intercepted OpenWindow for', targetUrl);
+          }}
+          javaScriptEnabled={true}
+          onMessage={event => console.log(event, 'event')}
+          sharedCookiesEnabled={true}
+          injectedJavaScriptBeforeContentLoaded={`
+            window.ReactNativeWebView.postMessage('Hello!');
+            alert('carregou!!!');
+          `}
+          onNavigationStateChange={handleWebViewNavigationStateChange}
+          source={{
+            uri: 'https://reactnative.dev/',
+            headers: {
+              Cookie: 'cookie1=asdf; cookie2=dfasdfdas',
+            },
+          }}
+        />
+      </View>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-  },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
-  },
-});
 
 export default App;
